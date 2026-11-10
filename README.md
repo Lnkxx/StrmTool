@@ -47,7 +47,7 @@ if (allowMediaProbe && mediaSources[0].Type != MediaSourceType.Placeholder
 
 ### 实测
 
-环境：一台家用 NAS 上的 Jellyfin 10.11.11，STRM 指向网盘 302 直链，播放器为 SenPlayer、Filmly、Infuse。数据取自 302 服务约 12 天的访问日志，计算的是“Jellyfin 的 ffprobe 第一次请求该文件”到“播放器拿到地址”的间隔。
+环境：一台家用 NAS 上的 Jellyfin 10.11.11，STRM 指向网盘 302 直链，播放器为 SenPlayer、网易爆米花、Infuse。数据取自 302 服务约 12 天的访问日志，计算的是“Jellyfin 的 ffprobe 第一次请求该文件”到“播放器拿到地址”的间隔。
 
 | 类型 | 播放次数 | 中位数 | p75 | 最长 |
 |---|---|---|---|---|
