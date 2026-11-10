@@ -19,5 +19,7 @@
   "StrmTool.LblForceRefreshIgnoreCache": "无视缓存",
   "StrmTool.DescForceRefreshIgnoreCache": "启用后，直接从远程服务器获取信息，忽略缓存文件（仍会判断是否已有媒体信息）",
   "StrmTool.LblMetadataRestoreTimeout": "元数据恢复超时（分钟）",
-  "StrmTool.DescMetadataRestoreTimeout": "当 strm 文件大小被重置时，等待元数据恢复的最大时间（1-30分钟）"
+  "StrmTool.DescMetadataRestoreTimeout": "当 strm 文件大小被重置时，等待元数据恢复的最大时间（1-30分钟）",
+  "StrmTool.LblSkipPlaybackProbe": "跳过播放前探测",
+  "StrmTool.DescSkipPlaybackProbe": "Jellyfin 每次播放 STRM 前都会重新探测一次。StrmTool 缓存能证明库里的媒体信息仍然有效时，跳过这次探测以加快起播。修改后立即生效。"
 }

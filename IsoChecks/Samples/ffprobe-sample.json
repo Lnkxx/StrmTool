@@ -1,0 +1,72 @@
+{
+  "format": {
+    "format_name": "bluray",
+    "duration": "120.5",
+    "size": "123456789"
+  },
+  "streams": [
+    {
+      "index": 0,
+      "codec_type": "video",
+      "codec_name": "hevc",
+      "profile": "Main 10",
+      "codec_tag_string": "hvc1",
+      "width": 3840,
+      "height": 2160,
+      "bit_rate": "25000000",
+      "bits_per_raw_sample": "10",
+      "level": 153,
+      "r_frame_rate": "24000/1001",
+      "avg_frame_rate": "24000/1001",
+      "display_aspect_ratio": "16:9",
+      "pix_fmt": "yuv420p10le",
+      "color_range": "tv",
+      "color_space": "bt2020nc",
+      "color_transfer": "smpte2084",
+      "color_primaries": "bt2020",
+      "field_order": "progressive",
+      "tags": {
+        "language": "eng",
+        "title": "UHD feature"
+      }
+    },
+    {
+      "index": 1,
+      "codec_type": "audio",
+      "codec_name": "truehd",
+      "profile": "TrueHD",
+      "channels": 8,
+      "sample_rate": "48000",
+      "bits_per_sample": 24,
+      "channel_layout": "7.1",
+      "sample_fmt": "s32"
+    },
+    {
+      "index": 2,
+      "codec_type": "video",
+      "codec_name": "h264",
+      "field_order": "unknown",
+      "level": 0,
+      "bits_per_raw_sample": "N/A",
+      "r_frame_rate": "0/0",
+      "avg_frame_rate": "N/A"
+    },
+    {
+      "index": 3,
+      "codec_type": "video",
+      "codec_name": "mpeg2video",
+      "field_order": "tt",
+      "level": 4,
+      "bits_per_raw_sample": "8"
+    }
+  ],
+  "chapters": [
+    {
+      "start_time": "10.0",
+      "end_time": "20.0",
+      "tags": {
+        "title": "Chapter one"
+      }
+    }
+  ]
+}

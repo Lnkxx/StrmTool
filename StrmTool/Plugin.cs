@@ -29,6 +29,16 @@ namespace StrmTool
             _logger = logger;
             _customLocalization = new LocalizationManager(logger, localizationManager, applicationPaths);
 
+            try
+            {
+                // Lets restores re-attach external subtitles that Jellyfin drops when it re-probes an STRM.
+                ExternalSubtitleScanner.Configure(localizationManager);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "External subtitle discovery unavailable; external subtitles keep the previous behavior");
+            }
+
             // 打印插件配置
             LogConfiguration();
 
@@ -48,6 +58,11 @@ namespace StrmTool
                 _logger.LogInformation("  MaxConcurrentExtract: {Value}", config.MaxConcurrentExtract);
                 _logger.LogInformation("  ForceRefreshIgnoreExisting: {Value}", config.ForceRefreshIgnoreExisting);
                 _logger.LogInformation("  ForceRefreshIgnoreCache: {Value}", config.ForceRefreshIgnoreCache);
+                _logger.LogInformation("  EnableIsoProbe: {Value}", config.EnableIsoProbe);
+                _logger.LogInformation("  CustomFfprobePath: {Value}", config.CustomFfprobePath);
+                _logger.LogInformation("  IsoProbeTimeoutSeconds: {Value}", config.IsoProbeTimeoutSeconds);
+                _logger.LogInformation("  ProbePathFilter: {Value}", config.ProbePathFilter);
+                _logger.LogInformation("  SkipPlaybackProbe: {Value}", config.SkipPlaybackProbe);
             }
             catch (Exception ex)
             {

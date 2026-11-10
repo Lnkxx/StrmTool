@@ -19,5 +19,7 @@
   "StrmTool.LblForceRefreshIgnoreCache": "Ignore cache",
   "StrmTool.DescForceRefreshIgnoreCache": "When enabled, will always fetch from remote server directly, ignoring cache files (will still check if media streams exist)",
   "StrmTool.LblMetadataRestoreTimeout": "Metadata restore timeout (minutes)",
-  "StrmTool.DescMetadataRestoreTimeout": "Maximum time to wait for metadata restoration when strm file size is reset (1-30 minutes)"
+  "StrmTool.DescMetadataRestoreTimeout": "Maximum time to wait for metadata restoration when strm file size is reset (1-30 minutes)",
+  "StrmTool.LblSkipPlaybackProbe": "Skip the probe before playback",
+  "StrmTool.DescSkipPlaybackProbe": "Jellyfin probes every STRM again before each playback. When the StrmTool cache proves the stored media info is current, that probe is skipped so playback starts sooner. Takes effect immediately."
 }

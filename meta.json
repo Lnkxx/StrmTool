@@ -1,0 +1,15 @@
+{
+  "category": "",
+  "changelog": "Skips Jellyfin's remote probe before playback when the cache proves the stored STRM media info is current.",
+  "description": "从strm文件中提取媒体技术信息（编解码器、分辨率、字幕），以增强媒体库显示和播放性能。",
+  "guid": "6107fc8c-883a-4171-b70e-7590658706b9",
+  "name": "StrmTool",
+  "overview": "",
+  "owner": "",
+  "targetAbi": "10.11.11.0",
+  "timestamp": "0001-01-01T00:00:00.0000000Z",
+  "version": "2.4.3.7",
+  "status": "Active",
+  "autoUpdate": false,
+  "assemblies": []
+}

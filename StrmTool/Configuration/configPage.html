@@ -42,6 +42,41 @@
             </div>
         </div>
         <div class="verticalSection">
+            <div class="checkboxContainer">
+                <label>
+                    <input type="checkbox" id="chkEnableIsoProbe" />
+                    <span id="lblEnableIsoProbe">Enable ISO / BDMV probing</span>
+                </label>
+                <div class="fieldDescription" id="descEnableIsoProbe">Use static ffprobe for local ISO images and HTTP Range/UDF parsing for remote ISO images.</div>
+            </div>
+            <div class="inputContainer">
+                <label for="txtCustomFfprobePath" id="lblCustomFfprobePath">Custom ffprobe path</label>
+                <input type="text" id="txtCustomFfprobePath" />
+                <div class="fieldDescription" id="descCustomFfprobePath">Absolute path to the linux_x64 or linux_arm64 ffprobe binary. Only required for local ISO images.</div>
+            </div>
+            <div class="inputContainer">
+                <label for="txtIsoProbeTimeout" id="lblIsoProbeTimeout">ISO probe timeout (seconds)</label>
+                <input type="number" id="txtIsoProbeTimeout" min="10" max="600" step="5" />
+                <div class="fieldDescription" id="descIsoProbeTimeout">Large disc images may need more time to open.</div>
+            </div>
+        </div>
+        <div class="verticalSection">
+            <div class="checkboxContainer">
+                <label>
+                    <input type="checkbox" id="chkSkipPlaybackProbe" />
+                    <span id="lblSkipPlaybackProbe">Skip the probe before playback</span>
+                </label>
+                <div class="fieldDescription" id="descSkipPlaybackProbe">Jellyfin probes every STRM again before each playback. When the StrmTool cache proves the stored media info is current, that probe is skipped so playback starts sooner. Takes effect immediately.</div>
+            </div>
+        </div>
+        <div class="verticalSection">
+            <div class="inputContainer">
+                <label for="txtProbePathFilter" id="lblProbePathFilter">Probe path filter</label>
+                <input type="text" id="txtProbePathFilter" />
+                <div class="fieldDescription" id="descProbePathFilter">Optional absolute directory or exact .strm path. Leave empty to scan all STRM files.</div>
+            </div>
+        </div>
+        <div class="verticalSection">
             <h4 id="lblForceRefresh" style="margin-bottom: 10px;">Force Refresh Options</h4>
             <div class="checkboxContainer" style="margin-left: 40px;">
                 <label>
@@ -86,6 +121,16 @@
                 'StrmTool.DescForceRefreshIgnoreCache': 'When enabled, will always fetch from remote server directly, ignoring cache files (will still check if media streams exist)',
                 'StrmTool.LblMetadataRestoreTimeout': 'Metadata restore timeout (minutes)',
                 'StrmTool.DescMetadataRestoreTimeout': 'Maximum time to wait for metadata restoration when strm file size is reset (1-30 minutes)',
+                'StrmTool.LblEnableIsoProbe': 'Enable ISO / BDMV probing',
+                'StrmTool.DescEnableIsoProbe': 'Use static ffprobe for local ISO images and HTTP Range/UDF parsing for remote ISO images.',
+                'StrmTool.LblCustomFfprobePath': 'Custom ffprobe path',
+                'StrmTool.DescCustomFfprobePath': 'Absolute path to the linux_x64 or linux_arm64 ffprobe binary. Only required for local ISO images.',
+                'StrmTool.LblIsoProbeTimeout': 'ISO probe timeout (seconds)',
+                'StrmTool.DescIsoProbeTimeout': 'Large disc images may need more time to open.',
+                'StrmTool.LblProbePathFilter': 'Probe path filter',
+                'StrmTool.DescProbePathFilter': 'Optional absolute directory or exact .strm path. Leave empty to scan all STRM files.',
+                'StrmTool.LblSkipPlaybackProbe': 'Skip the probe before playback',
+                'StrmTool.DescSkipPlaybackProbe': 'Jellyfin probes every STRM again before each playback. When the StrmTool cache proves the stored media info is current, that probe is skipped so playback starts sooner. Takes effect immediately.',
                 'StrmTool.BtnSave': 'Save',
                 'StrmTool.SettingsSaved': 'Settings saved successfully'
             },
@@ -106,6 +151,16 @@
                 'StrmTool.DescForceRefreshIgnoreCache': '启用后，直接从远程服务器获取信息，忽略缓存文件（仍会判断是否已有媒体信息）',
                 'StrmTool.LblMetadataRestoreTimeout': '元数据恢复超时（分钟）',
                 'StrmTool.DescMetadataRestoreTimeout': '当 strm 文件大小被重置时，等待元数据恢复的最大时间（1-30分钟）',
+                'StrmTool.LblEnableIsoProbe': '启用 ISO / BDMV 原盘探测',
+                'StrmTool.DescEnableIsoProbe': '本地 ISO 使用静态 ffprobe；远程 HTTP ISO 使用 Range/UDF 解析。',
+                'StrmTool.LblCustomFfprobePath': '自定义 ffprobe 路径',
+                'StrmTool.DescCustomFfprobePath': '填写 linux_x64 或 linux_arm64 ffprobe 的绝对路径，仅本地 ISO 需要。',
+                'StrmTool.LblIsoProbeTimeout': 'ISO 探测超时（秒）',
+                'StrmTool.DescIsoProbeTimeout': '较大的原盘镜像可能需要更长的打开时间。',
+                'StrmTool.LblProbePathFilter': '探测路径过滤',
+                'StrmTool.DescProbePathFilter': '可选，填写绝对目录或指定 .strm 文件路径。留空则扫描所有 STRM 文件。可填写 @/config/清单.txt，仅处理清单内的精确 STRM 路径。',
+                'StrmTool.LblSkipPlaybackProbe': '跳过播放前探测',
+                'StrmTool.DescSkipPlaybackProbe': 'Jellyfin 每次播放 STRM 前都会重新探测一次。StrmTool 缓存能证明库里的媒体信息仍然有效时，跳过这次探测以加快起播。修改后立即生效。',
                 'StrmTool.BtnSave': '保存',
                 'StrmTool.SettingsSaved': '设置已保存'
             }
@@ -192,6 +247,16 @@
             document.getElementById('descForceRefreshIgnoreCache').textContent = t('StrmTool.DescForceRefreshIgnoreCache');
             document.getElementById('lblMetadataRestoreTimeout').textContent = t('StrmTool.LblMetadataRestoreTimeout');
             document.getElementById('descMetadataRestoreTimeout').textContent = t('StrmTool.DescMetadataRestoreTimeout');
+            document.getElementById('lblEnableIsoProbe').textContent = t('StrmTool.LblEnableIsoProbe');
+            document.getElementById('descEnableIsoProbe').textContent = t('StrmTool.DescEnableIsoProbe');
+            document.getElementById('lblCustomFfprobePath').textContent = t('StrmTool.LblCustomFfprobePath');
+            document.getElementById('descCustomFfprobePath').textContent = t('StrmTool.DescCustomFfprobePath');
+            document.getElementById('lblIsoProbeTimeout').textContent = t('StrmTool.LblIsoProbeTimeout');
+            document.getElementById('descIsoProbeTimeout').textContent = t('StrmTool.DescIsoProbeTimeout');
+            document.getElementById('lblProbePathFilter').textContent = t('StrmTool.LblProbePathFilter');
+            document.getElementById('descProbePathFilter').textContent = t('StrmTool.DescProbePathFilter');
+            document.getElementById('lblSkipPlaybackProbe').textContent = t('StrmTool.LblSkipPlaybackProbe');
+            document.getElementById('descSkipPlaybackProbe').textContent = t('StrmTool.DescSkipPlaybackProbe');
             document.getElementById('btnSave').textContent = t('StrmTool.BtnSave');
         }
 
@@ -206,6 +271,11 @@
                 document.getElementById('chkForceRefreshIgnoreExisting').checked = config.ForceRefreshIgnoreExisting === true;
                 document.getElementById('chkForceRefreshIgnoreCache').checked = config.ForceRefreshIgnoreCache === true;
                 document.getElementById('txtMetadataRestoreTimeout').value = config.MetadataRestoreTimeoutMinutes ?? 5;
+                document.getElementById('chkEnableIsoProbe').checked = config.EnableIsoProbe !== false;
+                document.getElementById('txtCustomFfprobePath').value = config.CustomFfprobePath || '';
+                document.getElementById('txtIsoProbeTimeout').value = config.IsoProbeTimeoutSeconds ?? 90;
+                document.getElementById('txtProbePathFilter').value = config.ProbePathFilter || '';
+                document.getElementById('chkSkipPlaybackProbe').checked = config.SkipPlaybackProbe !== false;
             });
         }
 
@@ -213,6 +283,7 @@
             const refreshDelayInput = parseInt(document.getElementById('txtRefreshDelay').value, 10);
             const maxConcurrentInput = parseInt(document.getElementById('txtMaxConcurrentExtract').value, 10);
             const metadataRestoreTimeoutInput = parseInt(document.getElementById('txtMetadataRestoreTimeout').value, 10);
+            const isoProbeTimeoutInput = parseInt(document.getElementById('txtIsoProbeTimeout').value, 10);
             var config = {
                 EnableAutoExtract: document.getElementById('chkEnableAutoExtract').checked,
                 EnableMediaInfoCache: document.getElementById('chkEnableMediaInfoCache').checked,
@@ -220,7 +291,12 @@
                 MaxConcurrentExtract: Number.isNaN(maxConcurrentInput) ? 5 : maxConcurrentInput,
                 ForceRefreshIgnoreExisting: document.getElementById('chkForceRefreshIgnoreExisting').checked,
                 ForceRefreshIgnoreCache: document.getElementById('chkForceRefreshIgnoreCache').checked,
-                MetadataRestoreTimeoutMinutes: Number.isNaN(metadataRestoreTimeoutInput) ? 5 : metadataRestoreTimeoutInput
+                MetadataRestoreTimeoutMinutes: Number.isNaN(metadataRestoreTimeoutInput) ? 5 : metadataRestoreTimeoutInput,
+                EnableIsoProbe: document.getElementById('chkEnableIsoProbe').checked,
+                CustomFfprobePath: document.getElementById('txtCustomFfprobePath').value.trim(),
+                IsoProbeTimeoutSeconds: Number.isNaN(isoProbeTimeoutInput) ? 90 : isoProbeTimeoutInput,
+                ProbePathFilter: document.getElementById('txtProbePathFilter').value.trim(),
+                SkipPlaybackProbe: document.getElementById('chkSkipPlaybackProbe').checked
             };
 
             ApiClient.updatePluginConfiguration('6107fc8c-883a-4171-b70e-7590658706B9', config).then(function() {

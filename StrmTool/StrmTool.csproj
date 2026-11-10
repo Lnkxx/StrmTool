@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Version>2.4.3.7</Version>
+    <AssemblyVersion>2.4.3.7</AssemblyVersion>
+    <FileVersion>2.4.3.7</FileVersion>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DiscUtils.Udf" Version="0.16.13" />
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.6" />
+    <PackageReference Include="Jellyfin.Model" Version="10.11.6" />
+    <PackageReference Include="Jellyfin.Data" Version="10.11.6" />
+    <PackageReference Include="Jellyfin.Common" Version="10.11.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\configPage.html" />
+    <EmbeddedResource Include="Resources\*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="IsoProbeCli" />
+    <InternalsVisibleTo Include="IsoChecks" />
+  </ItemGroup>
+
+  <Target Name="CopyDiscUtilsPluginDependencies" AfterTargets="Build">
+    <ItemGroup>
+      <DiscUtilsPluginDependency Include="$(NuGetPackageRoot)/discutils.udf/0.16.13/lib/net5.0/DiscUtils.Udf.dll" />
+      <DiscUtilsPluginDependency Include="$(NuGetPackageRoot)/discutils.core/0.16.13/lib/net5.0/DiscUtils.Core.dll" />
+      <DiscUtilsPluginDependency Include="$(NuGetPackageRoot)/discutils.iso9660/0.16.13/lib/net5.0/DiscUtils.Iso9660.dll" />
+      <DiscUtilsPluginDependency Include="$(NuGetPackageRoot)/discutils.streams/0.16.13/lib/net5.0/DiscUtils.Streams.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DiscUtilsPluginDependency)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Entities;
 
 namespace StrmTool
@@ -14,7 +16,9 @@ namespace StrmTool
     public class MediaInfoCache
     {
         private readonly ILogger _logger;
+        private readonly ILibraryMonitor _libraryMonitor;
         private const string CacheFileSuffix = ".strmtool.json";
+        private const string IsoProbeStage = "iso-color-mapped";
 
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
@@ -23,9 +27,10 @@ namespace StrmTool
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         };
 
-        public MediaInfoCache(ILogger logger)
+        public MediaInfoCache(ILogger logger, ILibraryMonitor libraryMonitor = null)
         {
             _logger = logger;
+            _libraryMonitor = libraryMonitor;
         }
 
         /// <summary>
@@ -36,37 +41,16 @@ namespace StrmTool
             if (string.IsNullOrWhiteSpace(strmPath))
                 return null;
 
-            // 路径遍历防护：检查非法字符和路径遍历模式
-            if (ContainsPathTraversal(strmPath))
-            {
-                return null;
-            }
-
-            // 确保路径是绝对路径
+            // 确保路径是绝对路径（Jellyfin 的 item.Path 应该总是绝对路径）
             if (!Path.IsPathRooted(strmPath))
-            {
                 return null;
-            }
 
             var directory = Path.GetDirectoryName(strmPath);
             if (string.IsNullOrWhiteSpace(directory))
                 return null;
 
-            // 确保目录存在且合法
-            if (!Directory.Exists(directory))
-            {
-                return null;
-            }
-
             var fileName = Path.GetFileNameWithoutExtension(strmPath) + CacheFileSuffix;
             var cachePath = Path.Combine(directory, fileName);
-
-            // 最终验证生成的缓存路径是否仍在合法目录下
-            var cacheDirectory = Path.GetDirectoryName(cachePath);
-            if (!string.Equals(directory, cacheDirectory, StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
 
             return cachePath;
         }
@@ -74,7 +58,11 @@ namespace StrmTool
         /// <summary>
         /// 检查路径是否包含路径遍历攻击模式
         /// </summary>
-        private static bool ContainsPathTraversal(string path)
+        /// <summary>
+        /// 检查路径是否包含路径遍历攻击模式
+        /// 用于验证 strm 文件内容中的路径
+        /// </summary>
+        public static bool ContainsPathTraversal(string path)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
@@ -85,62 +73,11 @@ namespace StrmTool
                 return true;
             }
 
-            // 检查其他控制字符
-            foreach (char c in path)
+            // 检查基本的路径遍历模式
+            var normalized = path.Replace('/', '\\');
+            if (normalized.Contains(@"..\\") || normalized.Contains(@"\\..") || 
+                normalized.StartsWith(@"..") || normalized.EndsWith(@".."))
             {
-                if (c < 32 && c != '\t' && c != '\n' && c != '\r')
-                {
-                    return true;
-                }
-            }
-
-            // 规范化路径检查：使用 Path.GetFullPath 检测实际路径是否超出预期
-            try
-            {
-                // 获取目录部分（因为 strm 文件路径必须是文件而非目录）
-                var directory = Path.GetDirectoryName(path);
-                if (string.IsNullOrEmpty(directory))
-                {
-                    return true;
-                }
-
-                // 检查 .. 路径遍历（规范化前）
-                var normalized = path.Replace('/', '\\');
-                
-                // 检查 .. 后跟路径分隔符，或在开头的情况
-                if (normalized.Contains(@"..\") || normalized.Contains(@"\..") || 
-                    normalized.StartsWith(@"..") || normalized.EndsWith(@".."))
-                {
-                    return true;
-                }
-
-                // 检查 UNC 路径（潜在的 SMB 路径遍历）
-                if (normalized.StartsWith(@"\\"))
-                {
-                    return true;
-                }
-
-                // 检查交替数据流（ADS）- Windows 特有攻击
-                if (normalized.Contains(':') && !normalized.StartsWith(@"\\?\") && !normalized.StartsWith(@"\\.\"))
-                {
-                    // 排除驱动器盘符（如 C:\）
-                    var colonIndex = normalized.IndexOf(':');
-                    if (colonIndex > 1 || (colonIndex == 1 && !char.IsLetter(normalized[0])))
-                    {
-                        return true;
-                    }
-                }
-
-                // 检查符号链接和快捷方式
-                var extension = Path.GetExtension(path)?.ToLowerInvariant();
-                if (extension == ".lnk" || extension == ".symlink" || extension == ".junction")
-                {
-                    return true;
-                }
-            }
-            catch
-            {
-                // 如果路径规范化失败，视为可疑
                 return true;
             }
 
@@ -190,15 +127,65 @@ namespace StrmTool
         /// <summary>
         /// 验证缓存数据是否有效
         /// </summary>
-        private bool ValidateCacheData(MediaInfoCacheData cache, bool requireMediaStreams = true)
+        private bool ValidateCacheData(MediaInfoCacheData cache, string strmPath, bool requireMediaStreams = true)
         {
             if (cache?.IsValid != true)
                 return false;
             
-            if (requireMediaStreams && cache.MediaStreams == null)
+            if (cache.Size <= 1024 || !(cache.RunTimeTicks > 0) || cache.MediaStreams == null || !cache.MediaStreams.Any(x => x.Type == MediaStreamType.Video || x.Type == MediaStreamType.Audio))
                 return false;
 
+            if (cache.MediaStreams.Any(x => x.Type == MediaStreamType.Video && (!(x.Width > 0) || !(x.Height > 0)))) return false;
+            if (string.IsNullOrEmpty(cache.StrmContentHash) && !TryAdoptLegacyIdentity(cache, strmPath))
+                return false;
+            if (cache.StrmContentHash != GetStrmContentHash(strmPath))
+                return false;
             return true;
+        }
+
+        /// <summary>
+        /// A remote ISO cached before the current bitrate and color mapping must be probed once more. The cache stays readable
+        /// meanwhile, because metadata restore depends on it.
+        /// </summary>
+        public static bool NeedsIsoProbeUpgrade(MediaInfoCacheData cache, string strmPath)
+        {
+            if (cache == null || !string.Equals(cache.Container, "bluray", StringComparison.OrdinalIgnoreCase)
+                || cache.CompletedStages?.Contains(IsoProbeStage) == true)
+                return false;
+            try { return IsoDetector.IsHttpPath(File.ReadAllText(strmPath).Trim()); }
+            catch (IOException) { return false; }
+        }
+
+        /// <summary>
+        /// Caches written before 1.2 carry no STRM hash. If the STRM has not been modified since the cache was
+        /// written, the cache describes the current content, so bind it to the current hash (in memory only).
+        /// </summary>
+        private static bool TryAdoptLegacyIdentity(MediaInfoCacheData cache, string strmPath)
+        {
+            try
+            {
+                var written = cache.Timestamp.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(cache.Timestamp, DateTimeKind.Utc)
+                    : cache.Timestamp.ToUniversalTime();
+                if (written == default || File.GetLastWriteTimeUtc(strmPath) > written)
+                    return false;
+                cache.StrmContentHash = GetStrmContentHash(strmPath);
+                return !string.IsNullOrEmpty(cache.StrmContentHash);
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+
+        public static string GetStrmContentHash(string path)
+        {
+            try { return Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))); }
+            catch { return null; }
         }
 
         /// <summary>
@@ -217,7 +204,7 @@ namespace StrmTool
                 var json = File.ReadAllText(cachePath);
                 var cache = JsonSerializer.Deserialize<MediaInfoCacheData>(json, JsonOptions);
 
-                if (!ValidateCacheData(cache))
+                if (!ValidateCacheData(cache, strmPath))
                     return false;
 
                 mediaStreams = cache.MediaStreams;
@@ -245,7 +232,7 @@ namespace StrmTool
                 var json = await File.ReadAllTextAsync(cachePath, cancellationToken).ConfigureAwait(false);
                 var cache = JsonSerializer.Deserialize<MediaInfoCacheData>(json, JsonOptions);
 
-                if (!ValidateCacheData(cache))
+                if (!ValidateCacheData(cache, strmPath))
                     return (false, null);
 
                 _logger.LogDebug("Loaded cached media streams from {Path}", cachePath);
@@ -263,10 +250,12 @@ namespace StrmTool
         /// </summary>
         private async Task WriteFileAtomicallyAsync(string filePath, string content, CancellationToken cancellationToken)
         {
-            string tempPath = null;
+            var tempPath = filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            // A sidecar is not library content: unreported, each write makes Jellyfin refresh the whole library folder.
+            _libraryMonitor?.ReportFileSystemChangeBeginning(filePath);
+            _libraryMonitor?.ReportFileSystemChangeBeginning(tempPath);
             try
             {
-                tempPath = filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
                 await File.WriteAllTextAsync(tempPath, content, cancellationToken).ConfigureAwait(false);
 
                 if (File.Exists(filePath))
@@ -282,6 +271,11 @@ namespace StrmTool
             {
                 CleanupTempFile(tempPath);
                 throw;
+            }
+            finally
+            {
+                _libraryMonitor?.ReportFileSystemChangeComplete(filePath, false);
+                _libraryMonitor?.ReportFileSystemChangeComplete(tempPath, false);
             }
         }
 
@@ -340,6 +334,7 @@ namespace StrmTool
                     Version = "1.0",
                     Timestamp = DateTime.UtcNow,
                     MediaStreams = mediaStreams.ToList(),
+                    Chapters = new List<ChapterInfo>(),
                     IsValid = true
                 };
 
@@ -363,7 +358,11 @@ namespace StrmTool
             long size,
             long? runTimeTicks,
             string container,
-            CancellationToken cancellationToken = default)
+            IEnumerable<ChapterInfo> chapters = null,
+            CancellationToken cancellationToken = default,
+            string expectedStrmContentHash = null,
+            bool chaptersProbed = false,
+            int? totalBitrate = null)
         {
             try
             {
@@ -371,15 +370,27 @@ namespace StrmTool
                 if (!valid)
                     return;
 
+                var hash = GetStrmContentHash(strmPath);
+                if (size <= 1024 || hash == null || (expectedStrmContentHash != null && hash != expectedStrmContentHash))
+                    throw new InvalidOperationException("Invalid size or source changed before cache write");
                 var cache = new MediaInfoCacheData
                 {
-                    Version = "1.0",
+                    Version = "1.2",
+                    ChaptersProbed = chaptersProbed,
+                    ProbeVersion = "2.4.3.4",
+                    CompletedStages = totalBitrate.HasValue
+                        ? new[] { "basic", "native-persistence-verified", IsoProbeStage }
+                        : new[] { "basic", "native-persistence-verified" },
+                    TotalBitrate = totalBitrate,
+                    SourceKind = IsoDetector.IsIsoOriginal(strmPath, File.ReadAllText(strmPath).Trim()) ? "iso" : "media",
+                    StrmContentHash = hash,
                     Timestamp = DateTime.UtcNow,
                     MediaStreams = mediaStreams?.ToList() ?? new List<MediaStream>(),
                     IsValid = true,
                     Size = size,
                     RunTimeTicks = runTimeTicks,
-                    Container = container
+                    Container = container,
+                    Chapters = chapters?.ToList() ?? new List<ChapterInfo>()
                 };
 
                 var json = JsonSerializer.Serialize(cache, JsonOptions);
@@ -387,9 +398,10 @@ namespace StrmTool
 
                 _logger.LogDebug("Saved full cache (Size={Size}) to {Path}", size, cachePath);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException) { throw; }
+            catch (Exception)
             {
-                _logger.LogError(ex, "Error saving full cache to {Path}", strmPath);
+                throw new ProbeFailureException(ProbeFailureKind.CacheWriteFailure);
             }
         }
 
@@ -409,7 +421,7 @@ namespace StrmTool
                 var json = File.ReadAllText(cachePath);
                 var cache = JsonSerializer.Deserialize<MediaInfoCacheData>(json, JsonOptions);
 
-                if (!ValidateCacheData(cache, requireMediaStreams: false))
+                if (!ValidateCacheData(cache, strmPath, requireMediaStreams: false))
                     return false;
 
                 cacheData = cache;
@@ -519,6 +531,18 @@ namespace StrmTool
     /// </summary>
     public class MediaInfoCacheData
     {
+        [JsonPropertyName("chaptersProbed")]
+        public bool ChaptersProbed { get; set; }
+        [JsonPropertyName("probeVersion")]
+        public string ProbeVersion { get; set; }
+        [JsonPropertyName("completedStages")]
+        public string[] CompletedStages { get; set; }
+        [JsonPropertyName("sourceKind")]
+        public string SourceKind { get; set; }
+
+        [JsonPropertyName("strmContentHash")]
+        public string StrmContentHash { get; set; }
+
         [JsonPropertyName("version")]
         public string Version { get; set; }
 
@@ -539,5 +563,11 @@ namespace StrmTool
 
         [JsonPropertyName("container")]
         public string Container { get; set; }
+
+        [JsonPropertyName("totalBitrate")]
+        public int? TotalBitrate { get; set; }
+
+        [JsonPropertyName("chapters")]
+        public List<ChapterInfo> Chapters { get; set; } = new List<ChapterInfo>();
     }
 }

@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/src/</PathMap>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+</Project>
